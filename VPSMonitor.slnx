@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VPSMonitor.App/VPSMonitor.App.csproj" />
+    <Project Path="src/VPSMonitor.Application/VPSMonitor.Application.csproj" />
+    <Project Path="src/VPSMonitor.Domain/VPSMonitor.Domain.csproj" />
+    <Project Path="src/VPSMonitor.Infrastructure/VPSMonitor.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VPSMonitor.Application.Tests/VPSMonitor.Application.Tests.csproj" />
+    <Project Path="tests/VPSMonitor.Domain.Tests/VPSMonitor.Domain.Tests.csproj" />
+    <Project Path="tests/VPSMonitor.Infrastructure.Tests/VPSMonitor.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
