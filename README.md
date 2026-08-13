@@ -1,0 +1,2 @@
+# vps-status
+vps monitor
