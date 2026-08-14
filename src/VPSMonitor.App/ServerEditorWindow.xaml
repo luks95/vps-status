@@ -1,0 +1,134 @@
+<Window x:Class="VPSMonitor.App.ServerEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Agregar VPS"
+        Width="620"
+        Height="760"
+        MinWidth="580"
+        MinHeight="720"
+        Background="{StaticResource WindowBackgroundBrush}"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="28" Background="{StaticResource WindowBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock x:Name="HeadingText" Text="Agregar VPS" FontSize="24" FontWeight="SemiBold" />
+            <TextBlock Margin="0,6,0,0"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Text="La aplicación usará una conexión SSH de solo lectura." />
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,20,0,0">
+            <StackPanel>
+                <TextBlock Text="Nombre visible" FontWeight="SemiBold" />
+                <TextBox x:Name="NameBox" Margin="0,6,0,14" TextChanged="AnyFieldChanged" AutomationProperties.Name="Nombre visible" />
+
+                <TextBlock Text="IP o dominio" FontWeight="SemiBold" />
+                <TextBox x:Name="HostBox" Margin="0,6,0,14" TextChanged="AnyFieldChanged" AutomationProperties.Name="IP o dominio" />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="130" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Usuario SSH" FontWeight="SemiBold" />
+                        <TextBox x:Name="UsernameBox" Margin="0,6,0,14" TextChanged="AnyFieldChanged" AutomationProperties.Name="Usuario SSH" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Puerto" FontWeight="SemiBold" />
+                        <TextBox x:Name="PortBox" Margin="0,6,0,14" Text="22" TextChanged="AnyFieldChanged" AutomationProperties.Name="Puerto SSH" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="Contraseña" FontWeight="SemiBold" />
+                <PasswordBox x:Name="PasswordInput" Margin="0,6,0,4" PasswordChanged="AnyPasswordChanged" AutomationProperties.Name="Contraseña SSH" />
+                <TextBlock x:Name="PasswordHint" Style="{StaticResource MutedText}" Text="Se guardará cifrada mediante Credential Manager de Windows." />
+
+                <CheckBox x:Name="EnabledCheckBox"
+                          Margin="0,16,0,0"
+                          IsChecked="True"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          Content="Monitorear automáticamente" />
+
+                <CheckBox x:Name="CustomThresholdsCheckBox"
+                          Margin="0,14,0,0"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          Content="Usar límites de alerta propios"
+                          Checked="CustomThresholdsChanged"
+                          Unchecked="CustomThresholdsChanged" />
+
+                <Grid x:Name="CustomThresholdPanel" Margin="0,14,0,0" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,6,0">
+                        <TextBlock Text="CPU %" Style="{StaticResource MutedText}" />
+                        <TextBox x:Name="CpuThresholdBox" Text="90" Margin="0,4,0,0" AutomationProperties.Name="Límite de CPU" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="6,0">
+                        <TextBlock Text="Memoria %" Style="{StaticResource MutedText}" />
+                        <TextBox x:Name="MemoryThresholdBox" Text="85" Margin="0,4,0,0" AutomationProperties.Name="Límite de memoria" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="6,0">
+                        <TextBlock Text="Disco %" Style="{StaticResource MutedText}" />
+                        <TextBox x:Name="DiskThresholdBox" Text="80" Margin="0,4,0,0" AutomationProperties.Name="Límite de disco" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Margin="6,0,0,0">
+                        <TextBlock Text="Latencia ms" Style="{StaticResource MutedText}" />
+                        <TextBox x:Name="LatencyThresholdBox" Text="200" Margin="0,4,0,0" AutomationProperties.Name="Límite de latencia" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+            <Border x:Name="ResultPanel"
+                    Visibility="Collapsed"
+                    Padding="12"
+                    CornerRadius="6"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1">
+                <TextBlock x:Name="ResultText" Foreground="{StaticResource TextSecondaryBrush}" />
+            </Border>
+            <TextBlock x:Name="ValidationText"
+                       Margin="0,10,0,0"
+                       Foreground="{StaticResource CriticalBrush}"
+                       AutomationProperties.LiveSetting="Assertive" />
+        </StackPanel>
+
+        <Grid Grid.Row="3" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="TestButton"
+                    Style="{StaticResource ButtonBase}"
+                    Content="Probar conexión"
+                    Click="TestConnectionClicked" />
+            <Button Grid.Column="2"
+                    Margin="0,0,10,0"
+                    Style="{StaticResource ButtonBase}"
+                    Content="Cancelar"
+                    IsCancel="True" />
+            <Button x:Name="SaveButton"
+                    Grid.Column="3"
+                    Style="{StaticResource PrimaryButton}"
+                    Content="Guardar VPS"
+                    Click="SaveClicked" />
+        </Grid>
+    </Grid>
+</Window>

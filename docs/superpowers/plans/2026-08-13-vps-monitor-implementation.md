@@ -71,7 +71,7 @@ Implementar el MVP de VPS Monitor como aplicación WPF autocontenida para Window
 
 1. Integrar SQLite para configuración y migración inicial.
 2. Crear repositorios para VPS, preferencias, umbrales y huellas.
-3. Integrar `PasswordVault` mediante `ICredentialVault`.
+3. Integrar credenciales genéricas locales de Credential Manager (`CredWrite`/`CredRead`) mediante `ICredentialVault`.
 4. Garantizar operaciones coordinadas al crear, editar o eliminar una VPS.
 5. Añadir pruebas que inspeccionen la base de datos y registros para descartar secretos.
 

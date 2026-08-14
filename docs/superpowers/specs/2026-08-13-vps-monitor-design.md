@@ -44,7 +44,7 @@ El producto es exclusivamente de observación. No permitirá ejecutar comandos a
 - SSH.NET para conexiones SSH.
 - LiveCharts2 para gráficas en tiempo real.
 - SQLite para metadatos y configuración local.
-- Credential Locker de Windows (`PasswordVault`), administrable desde Credential Manager, para las contraseñas.
+- Credential Manager de Windows mediante credenciales genéricas locales (`CredWrite`/`CredRead`) para las contraseñas. Las credenciales no se sincronizan entre equipos.
 - APIs de Windows para bandeja del sistema y notificaciones.
 - Publicación autocontenida para `win-x64`.
 
