@@ -135,6 +135,7 @@
                                     <ColumnDefinition Width="40" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Border Width="34" Height="34" CornerRadius="17" Background="#27313B">
                                     <TextBlock Text="&#xE950;" FontFamily="Segoe Fluent Icons" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -146,9 +147,20 @@
                                 <Ellipse Grid.Column="2"
                                          Width="9"
                                          Height="9"
+                                         Margin="4,0,8,0"
                                          Fill="{Binding StatusColor}"
                                          ToolTip="{Binding StatusLabel}"
                                          AutomationProperties.Name="{Binding StatusLabel}" />
+                                <Button Grid.Column="3"
+                                        Width="30"
+                                        Height="30"
+                                        Padding="0"
+                                        Style="{StaticResource DangerButton}"
+                                        ToolTip="Eliminar servidor"
+                                        AutomationProperties.Name="Eliminar servidor"
+                                        Click="DeleteServerFromListClicked">
+                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons" FontSize="13" />
+                                </Button>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -342,7 +354,7 @@
                                         <StackPanel>
                                             <Grid><TextBlock Text="Disco" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="{Binding DiskPercentText}" HorizontalAlignment="Right" FontSize="22" Foreground="{StaticResource WarningBrush}" /></Grid>
                                             <TextBlock Text="{Binding DiskText}" Margin="0,22,0,8" Foreground="{StaticResource TextSecondaryBrush}" />
-                                            <ProgressBar Value="{Binding DiskPercent}" Maximum="100" />
+                                            <ProgressBar Value="{Binding DiskPercent, Mode=OneWay}" Maximum="100" />
                                             <TextBlock Text="Sistema de archivos raíz" Margin="0,12,0,0" Style="{StaticResource MutedText}" />
                                         </StackPanel>
                                     </Border>

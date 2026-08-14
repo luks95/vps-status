@@ -70,8 +70,20 @@ public partial class MainWindow : Window
     private async void DeleteServerClicked(object sender, RoutedEventArgs e)
     {
         if (_viewModel.SelectedServer is null) return;
+        await ConfirmAndDeleteAsync(_viewModel.SelectedServer);
+    }
+
+    private async void DeleteServerFromListClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ServerItemViewModel server }) return;
+        e.Handled = true;
+        await ConfirmAndDeleteAsync(server);
+    }
+
+    private async Task ConfirmAndDeleteAsync(ServerItemViewModel server)
+    {
         var answer = MessageBox.Show(
-            $"¿Eliminar {_viewModel.SelectedServer.Name}? También se borrará su contraseña guardada.",
+            $"¿Eliminar {server.Name}? También se borrará su contraseña guardada.",
             "Eliminar VPS",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -79,7 +91,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await _viewModel.DeleteSelectedAsync();
+            await _viewModel.DeleteAsync(server);
         }
         catch (Exception exception)
         {

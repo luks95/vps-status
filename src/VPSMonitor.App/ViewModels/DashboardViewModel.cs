@@ -158,17 +158,17 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    public async Task DeleteSelectedAsync()
+    public async Task DeleteAsync(ServerItemViewModel item)
     {
-        if (SelectedServer is null) return;
-        var item = SelectedServer;
+        if (!Servers.Contains(item)) return;
         IsBusy = true;
         try
         {
             await _monitoringCoordinator.StopAsync(item.Id);
             await _vpsManager.DeleteAsync(item.Id);
+            var wasSelected = ReferenceEquals(SelectedServer, item);
             Servers.Remove(item);
-            SelectedServer = Servers.FirstOrDefault();
+            if (wasSelected) SelectedServer = Servers.FirstOrDefault();
             NotifyCollectionSummary();
         }
         finally
