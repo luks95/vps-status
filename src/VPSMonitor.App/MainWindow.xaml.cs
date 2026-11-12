@@ -61,8 +61,8 @@ public partial class MainWindow : Window
         }
 
         var server = _viewModel.SelectedServer.Server;
-        var password = await _credentialVault.GetPasswordAsync(server.Id);
-        var editor = new ServerEditorWindow(_serverProbe, server, password) { Owner = this };
+        var secret = await _credentialVault.GetPasswordAsync(server.Id);
+        var editor = new ServerEditorWindow(_serverProbe, server, secret) { Owner = this };
         if (editor.ShowDialog() != true || editor.SavedServer is null) return;
         await SaveFromEditorAsync(editor);
     }
@@ -83,7 +83,7 @@ public partial class MainWindow : Window
     private async Task ConfirmAndDeleteAsync(ServerItemViewModel server)
     {
         var answer = MessageBox.Show(
-            $"¿Eliminar {server.Name}? También se borrará su contraseña guardada.",
+            $"¿Eliminar {server.Name}? También se borrarán sus credenciales guardadas (la clave privada no se toca).",
             "Eliminar VPS",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);

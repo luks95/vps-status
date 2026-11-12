@@ -34,4 +34,66 @@ public sealed class SqliteVpsRepositoryTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task SaveAndGetAll_RoundTripsPrivateKeyAuthentication()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "VPSMonitor.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            var repository = new SqliteVpsRepository(Path.Combine(directory, "test.db"));
+            var server = VpsServer.Create("Clave", "192.168.1.11", 22, "deploy") with
+            {
+                AuthMethod = SshAuthMethod.PrivateKey,
+                PrivateKeyPath = @"C:\Users\me\.ssh\id_ed25519"
+            };
+
+            await repository.SaveAsync(server);
+
+            Assert.Equal(server, Assert.Single(await repository.GetAllAsync()));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Initialize_MigratesDatabaseCreatedBeforeKeyAuthentication()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "VPSMonitor.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var databasePath = Path.Combine(directory, "old.db");
+
+        try
+        {
+            await using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={databasePath}"))
+            {
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE vps_servers (
+                        id TEXT PRIMARY KEY, name TEXT NOT NULL, host TEXT NOT NULL,
+                        port INTEGER NOT NULL, username TEXT NOT NULL, is_enabled INTEGER NOT NULL DEFAULT 1,
+                        host_fingerprint TEXT NULL, cpu_threshold REAL NULL, memory_threshold REAL NULL,
+                        disk_threshold REAL NULL, latency_threshold REAL NULL);
+                    INSERT INTO vps_servers (id, name, host, port, username)
+                    VALUES ('7d3f7c43-45a8-4c8d-a2a1-1f5f6f0f9a10', 'Antigua', '10.0.0.5', 22, 'root');
+                    """;
+                await command.ExecuteNonQueryAsync();
+            }
+
+            var restored = Assert.Single(await new SqliteVpsRepository(databasePath).GetAllAsync());
+
+            Assert.Equal(SshAuthMethod.Password, restored.AuthMethod);
+            Assert.Null(restored.PrivateKeyPath);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

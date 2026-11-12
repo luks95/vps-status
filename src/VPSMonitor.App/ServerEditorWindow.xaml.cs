@@ -1,32 +1,40 @@
+using System.Globalization;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using System.Windows.Media;
 using VPSMonitor.Application.Abstractions;
 using VPSMonitor.Domain.Monitoring;
 using VPSMonitor.Domain.Servers;
-using MessageBox = System.Windows.MessageBox;
+using Brush = System.Windows.Media.Brush;
+using Control = System.Windows.Controls.Control;
 
 namespace VPSMonitor.App;
 
 public partial class ServerEditorWindow : Window
 {
+    private static readonly string[] DefaultKeyNames = ["id_ed25519", "id_ecdsa", "id_rsa"];
+
     private readonly IServerProbe _serverProbe;
     private readonly VpsServer? _original;
-    private readonly string? _existingPassword;
+    private readonly string? _existingSecret;
     private string? _trustedFingerprint;
     private string? _verifiedSignature;
+    private TaskCompletionSource<bool>? _trustDecision;
     private bool _initializing = true;
 
-    public ServerEditorWindow(IServerProbe serverProbe, VpsServer? server = null, string? existingPassword = null)
+    /// <param name="existingSecret">Secreto guardado de la VPS editada: contraseña o passphrase de la clave.</param>
+    public ServerEditorWindow(IServerProbe serverProbe, VpsServer? server = null, string? existingSecret = null)
     {
         InitializeComponent();
         _serverProbe = serverProbe;
         _original = server;
-        _existingPassword = existingPassword;
+        _existingSecret = existingSecret;
         _trustedFingerprint = server?.TrustedHostKeyFingerprint;
         SourceInitialized += (_, _) => EnableDarkTitleBar();
+        Closing += (_, _) => _trustDecision?.TrySetResult(false);
 
         if (server is not null)
         {
@@ -37,7 +45,12 @@ public partial class ServerEditorWindow : Window
             UsernameBox.Text = server.Username;
             PortBox.Text = server.Port.ToString();
             EnabledCheckBox.IsChecked = server.IsEnabled;
-            PasswordHint.Text = "Déjala vacía para conservar la contraseña guardada.";
+            if (server.AuthMethod == SshAuthMethod.PrivateKey)
+            {
+                KeyRadio.IsChecked = true;
+                KeyPathBox.Text = server.PrivateKeyPath ?? string.Empty;
+            }
+
             if (server.ThresholdOverrides is { } thresholds)
             {
                 CustomThresholdsCheckBox.IsChecked = true;
@@ -48,45 +61,44 @@ public partial class ServerEditorWindow : Window
             }
         }
 
+        UpdateAuthPanels();
         _initializing = false;
     }
 
     public VpsServer? SavedServer { get; private set; }
+
+    /// <summary>Contraseña o passphrase nueva; null conserva la guardada.</summary>
     public string? NewPassword { get; private set; }
+
+    private bool UsesKey => KeyRadio.IsChecked == true;
+
+    // ───────── Prueba de conexión ─────────
 
     private async void TestConnectionClicked(object sender, RoutedEventArgs e)
     {
         ValidationText.Text = string.Empty;
-        if (!TryBuildServer(out var server, out var error))
+        if (!TryBuildServer(out var server, out var error, out var invalidField))
         {
-            ValidationText.Text = error;
+            ShowValidation(error, invalidField);
             return;
         }
 
-        var password = string.IsNullOrEmpty(PasswordInput.Password) ? _existingPassword : PasswordInput.Password;
-        if (string.IsNullOrEmpty(password))
+        var secret = CurrentSecretForProbe();
+        if (!UsesKey && string.IsNullOrEmpty(secret))
         {
-            ValidationText.Text = "Ingresa la contraseña para probar la conexión.";
-            PasswordInput.Focus();
+            ShowValidation("Ingresa la contraseña para probar la conexión.", PasswordInput);
             return;
         }
 
         SetBusy(true, "Conectando de forma segura…");
         try
         {
-            var result = await _serverProbe.ProbeAsync(server, password);
+            var result = await _serverProbe.ProbeAsync(server, secret);
             if (result.FailureStatus is ConnectionStatus.HostKeyUnknown or ConnectionStatus.HostKeyChanged &&
                 result.ObservedHostKeyFingerprint is { } fingerprint)
             {
-                var changeWarning = result.FailureStatus == ConnectionStatus.HostKeyChanged
-                    ? "ADVERTENCIA: la huella guardada cambió. Verifica el servidor antes de continuar.\n\n"
-                    : "Primera conexión con este servidor.\n\n";
-                var answer = MessageBox.Show(
-                    $"{changeWarning}Huella presentada:\n{fingerprint}\n\n¿Confías en esta huella?",
-                    "Confirmar identidad SSH",
-                    MessageBoxButton.YesNo,
-                    result.FailureStatus == ConnectionStatus.HostKeyChanged ? MessageBoxImage.Warning : MessageBoxImage.Question);
-                if (answer != MessageBoxResult.Yes)
+                var changed = result.FailureStatus == ConnectionStatus.HostKeyChanged;
+                if (!await AskToTrustAsync(fingerprint, changed))
                 {
                     ShowResult("La huella no fue aprobada. No se guardó ningún cambio.", false);
                     return;
@@ -94,7 +106,8 @@ public partial class ServerEditorWindow : Window
 
                 _trustedFingerprint = fingerprint;
                 server = server with { TrustedHostKeyFingerprint = fingerprint };
-                result = await _serverProbe.ProbeAsync(server, password);
+                SetBusy(true, "Verificando con la huella aprobada…");
+                result = await _serverProbe.ProbeAsync(server, secret);
             }
 
             if (!result.IsSuccess)
@@ -105,7 +118,9 @@ public partial class ServerEditorWindow : Window
 
             _trustedFingerprint = result.ObservedHostKeyFingerprint ?? _trustedFingerprint;
             _verifiedSignature = Signature();
-            ShowResult($"Conexión verificada · {result.Snapshot?.Distribution ?? "Linux"} · SSH de solo lectura", true);
+            var method = UsesKey ? "clave SSH" : "contraseña";
+            ShowResult($"Conexión verificada · {result.Snapshot?.Distribution ?? "Linux"} · {method} · solo lectura", true);
+            SaveButton.Focus();
         }
         catch (Exception exception)
         {
@@ -117,36 +132,84 @@ public partial class ServerEditorWindow : Window
         }
     }
 
+    private Task<bool> AskToTrustAsync(string fingerprint, bool changed)
+    {
+        _trustDecision = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        ResultPanel.Visibility = Visibility.Collapsed;
+        FingerprintBox.Text = fingerprint;
+        FingerprintTitle.Text = changed ? "La huella del servidor cambió" : "Confirma la identidad del servidor";
+        FingerprintDescription.Text = changed
+            ? "Advertencia: la huella guardada ya no coincide. Podría ser una reinstalación legítima o un intento de suplantación; verifícalo antes de continuar."
+            : "Es la primera conexión con este servidor. Compara esta huella con la que muestra tu proveedor antes de confiar.";
+        FingerprintPanel.Visibility = Visibility.Visible;
+        TrustButton.Focus();
+        return _trustDecision.Task;
+    }
+
+    private void TrustFingerprintClicked(object sender, RoutedEventArgs e) => CompleteTrust(true);
+
+    private void RejectFingerprintClicked(object sender, RoutedEventArgs e) => CompleteTrust(false);
+
+    private void CompleteTrust(bool trusted)
+    {
+        FingerprintPanel.Visibility = Visibility.Collapsed;
+        _trustDecision?.TrySetResult(trusted);
+    }
+
+    // ───────── Guardado ─────────
+
     private async void SaveClicked(object sender, RoutedEventArgs e)
     {
-        if (!TryBuildServer(out var server, out var error))
+        if (!TryBuildServer(out var server, out var error, out var invalidField))
         {
-            ValidationText.Text = error;
+            ShowValidation(error, invalidField);
             return;
         }
 
         if (_verifiedSignature != Signature())
         {
-            ValidationText.Text = "Prueba la conexión después de completar o modificar los datos.";
-            TestButton.Focus();
+            ShowValidation("Prueba la conexión después de completar o modificar los datos.", TestButton);
             return;
         }
 
         await Task.Yield();
         SavedServer = server with { TrustedHostKeyFingerprint = _trustedFingerprint };
-        NewPassword = string.IsNullOrEmpty(PasswordInput.Password) ? null : PasswordInput.Password;
+        NewPassword = UsesKey
+            ? NullIfEmpty(PassphraseInput.Password)
+            : NullIfEmpty(PasswordInput.Password);
         DialogResult = true;
     }
 
-    private bool TryBuildServer(out VpsServer server, out string error)
+    private static string? NullIfEmpty(string value) => string.IsNullOrEmpty(value) ? null : value;
+
+    private bool TryBuildServer(out VpsServer server, out string error, out Control? invalidField)
     {
-        error = string.Empty;
         server = null!;
+        error = string.Empty;
+        invalidField = null;
+
+        if (string.IsNullOrWhiteSpace(NameBox.Text)) return Fail("El nombre es obligatorio.", NameBox, out error, out invalidField);
+        if (string.IsNullOrWhiteSpace(HostBox.Text)) return Fail("La IP o dominio es obligatorio.", HostBox, out error, out invalidField);
         if (!int.TryParse(PortBox.Text, out var port) || port is < 1 or > 65535)
         {
-            error = "El puerto debe ser un número entre 1 y 65535.";
-            PortBox.Focus();
-            return false;
+            return Fail("El puerto debe ser un número entre 1 y 65535.", PortBox, out error, out invalidField);
+        }
+
+        if (string.IsNullOrWhiteSpace(UsernameBox.Text)) return Fail("El usuario es obligatorio.", UsernameBox, out error, out invalidField);
+
+        string? keyPath = null;
+        if (UsesKey)
+        {
+            keyPath = KeyPathBox.Text.Trim().Trim('"');
+            if (keyPath.Length == 0)
+            {
+                return Fail("Indica la ruta de tu clave privada.", KeyPathBox, out error, out invalidField);
+            }
+
+            if (!File.Exists(Environment.ExpandEnvironmentVariables(keyPath)))
+            {
+                return Fail("No se encontró el archivo de la clave privada.", KeyPathBox, out error, out invalidField);
+            }
         }
 
         var fingerprint = EndpointMatchesOriginal() ? _trustedFingerprint : null;
@@ -158,9 +221,13 @@ public partial class ServerEditorWindow : Window
                 !TryThreshold(DiskThresholdBox.Text, 100, out var disk) ||
                 !TryThreshold(LatencyThresholdBox.Text, double.MaxValue, out var latency))
             {
-                error = "Los límites deben ser números positivos; los porcentajes no pueden superar 100.";
-                return false;
+                return Fail(
+                    "Los límites deben ser números positivos; los porcentajes no pueden superar 100.",
+                    CpuThresholdBox,
+                    out error,
+                    out invalidField);
             }
+
             thresholds = new AlertThresholds(cpu, memory, disk, latency);
         }
 
@@ -172,7 +239,9 @@ public partial class ServerEditorWindow : Window
             UsernameBox.Text.Trim(),
             EnabledCheckBox.IsChecked == true,
             fingerprint,
-            thresholds);
+            thresholds,
+            UsesKey ? SshAuthMethod.PrivateKey : SshAuthMethod.Password,
+            keyPath);
 
         try
         {
@@ -186,15 +255,102 @@ public partial class ServerEditorWindow : Window
         }
     }
 
+    private static bool Fail(string message, Control field, out string error, out Control? invalidField)
+    {
+        error = message;
+        invalidField = field;
+        return false;
+    }
+
     private bool EndpointMatchesOriginal() => _original is not null &&
         string.Equals(_original.Host, HostBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) &&
         _original.Port.ToString() == PortBox.Text.Trim() &&
         string.Equals(_original.Username, UsernameBox.Text.Trim(), StringComparison.Ordinal);
 
-    private string Signature() => $"{NameBox.Text.Trim()}|{HostBox.Text.Trim()}|{PortBox.Text.Trim()}|{UsernameBox.Text.Trim()}|{PasswordInput.Password}|{EnabledCheckBox.IsChecked}";
+    /// <summary>Secreto a usar al probar: el escrito ahora, o el guardado si sigue siendo aplicable.</summary>
+    private string CurrentSecretForProbe()
+    {
+        if (UsesKey)
+        {
+            if (!string.IsNullOrEmpty(PassphraseInput.Password)) return PassphraseInput.Password;
+            var sameKey = _original is { AuthMethod: SshAuthMethod.PrivateKey } &&
+                string.Equals(_original.PrivateKeyPath, KeyPathBox.Text.Trim().Trim('"'), StringComparison.OrdinalIgnoreCase);
+            return sameKey ? _existingSecret ?? string.Empty : string.Empty;
+        }
+
+        if (!string.IsNullOrEmpty(PasswordInput.Password)) return PasswordInput.Password;
+        return _original is { AuthMethod: SshAuthMethod.Password } ? _existingSecret ?? string.Empty : string.Empty;
+    }
+
+    private string Signature() => string.Join(
+        '|',
+        NameBox.Text.Trim(),
+        HostBox.Text.Trim(),
+        PortBox.Text.Trim(),
+        UsernameBox.Text.Trim(),
+        UsesKey ? "key" : "password",
+        UsesKey ? KeyPathBox.Text.Trim().Trim('"') : string.Empty,
+        UsesKey ? PassphraseInput.Password : PasswordInput.Password,
+        EnabledCheckBox.IsChecked);
 
     private static bool TryThreshold(string text, double maximum, out double value) =>
         double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value) && value > 0 && value <= maximum;
+
+    // ───────── Método de autenticación ─────────
+
+    private void AuthMethodChanged(object sender, RoutedEventArgs e)
+    {
+        if (PasswordPanel is null || KeyPanel is null) return;
+        UpdateAuthPanels();
+        if (_initializing) return;
+
+        if (UsesKey && string.IsNullOrWhiteSpace(KeyPathBox.Text) && FindDefaultKey() is { } suggested)
+        {
+            KeyPathBox.Text = suggested;
+        }
+
+        ResetVerification();
+    }
+
+    private void UpdateAuthPanels()
+    {
+        PasswordPanel.Visibility = UsesKey ? Visibility.Collapsed : Visibility.Visible;
+        KeyPanel.Visibility = UsesKey ? Visibility.Visible : Visibility.Collapsed;
+
+        var editingPassword = _original is { AuthMethod: SshAuthMethod.Password };
+        PasswordHint.Text = editingPassword
+            ? "Déjala vacía para conservar la contraseña guardada."
+            : "Se guardará cifrada mediante Credential Manager de Windows.";
+
+        var editingKey = _original is { AuthMethod: SshAuthMethod.PrivateKey } && !string.IsNullOrEmpty(_existingSecret);
+        PassphraseHint.Text = editingKey
+            ? "Déjala vacía para conservar la passphrase guardada."
+            : "Solo si tu clave está protegida. Se guarda en Credential Manager de Windows.";
+    }
+
+    private void BrowseKeyClicked(object sender, RoutedEventArgs e)
+    {
+        var sshDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Selecciona tu clave privada SSH",
+            Filter = "Todos los archivos|*.*",
+            CheckFileExists = true,
+            InitialDirectory = Directory.Exists(sshDirectory) ? sshDirectory : string.Empty
+        };
+
+        if (dialog.ShowDialog(this) == true) KeyPathBox.Text = dialog.FileName;
+    }
+
+    private static string? FindDefaultKey()
+    {
+        var sshDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+        return DefaultKeyNames
+            .Select(name => Path.Combine(sshDirectory, name))
+            .FirstOrDefault(File.Exists);
+    }
+
+    // ───────── Estado de la interfaz ─────────
 
     private void CustomThresholdsChanged(object sender, RoutedEventArgs e)
     {
@@ -223,6 +379,12 @@ public partial class ServerEditorWindow : Window
         ValidationText.Text = string.Empty;
     }
 
+    private void ShowValidation(string message, Control? field)
+    {
+        ValidationText.Text = message;
+        field?.Focus();
+    }
+
     private void SetBusy(bool busy, string? message)
     {
         TestButton.IsEnabled = !busy;
@@ -234,12 +396,15 @@ public partial class ServerEditorWindow : Window
     {
         ResultPanel.Visibility = Visibility.Visible;
         ResultText.Text = message;
-        ResultText.Foreground = success switch
+        (ResultIcon.Text, var brushKey) = success switch
         {
-            true => (System.Windows.Media.Brush)FindResource("SuccessBrush"),
-            false => (System.Windows.Media.Brush)FindResource("CriticalBrush"),
-            _ => (System.Windows.Media.Brush)FindResource("TextSecondaryBrush")
+            true => ("", "SuccessBrush"),
+            false => ("", "CriticalBrush"),
+            _ => ("", "TextSecondaryBrush")
         };
+        var brush = (Brush)FindResource(brushKey);
+        ResultIcon.Foreground = brush;
+        ResultText.Foreground = success is null ? brush : (Brush)FindResource("TextPrimaryBrush");
     }
 
     private void EnableDarkTitleBar()

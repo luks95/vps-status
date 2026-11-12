@@ -68,11 +68,14 @@ public sealed class MonitoringCoordinator(
         try
         {
             var password = await credentialVault.GetPasswordAsync(server.Id, cancellationToken);
-            if (password is null)
+            if (password is null && server.AuthMethod == SshAuthMethod.Password)
             {
                 Publish(server.Id, ConnectionStatus.AuthenticationFailed, null, "No se encontró la contraseña guardada.");
                 return;
             }
+
+            // Con clave privada, el secreto guardado es solo la passphrase y puede no existir.
+            password ??= string.Empty;
 
             while (!cancellationToken.IsCancellationRequested)
             {

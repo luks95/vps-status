@@ -11,12 +11,79 @@
         WindowStartupLocation="CenterScreen"
         Loaded="WindowLoaded"
         Closing="WindowClosing">
+    <Window.Resources>
+        <!-- Chip de estado: icono + texto + color (nunca solo color). DataContext: ServerItemViewModel. -->
+        <DataTemplate x:Key="StatusChipTemplate">
+            <Border Padding="10,4" CornerRadius="12" Background="{Binding StatusBackground}" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding StatusIcon}"
+                               FontFamily="Segoe Fluent Icons"
+                               FontSize="12"
+                               Margin="0,1,6,0"
+                               Foreground="{Binding StatusColor}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StatusLabel}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{Binding StatusColor}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- Tarjeta clicable sin cromo propio de botón. -->
+        <Style x:Key="CardButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#18212B" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#3C5568" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+                                <Setter TargetName="Root" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="MetricValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Window.Resources>
+
     <Grid Background="{StaticResource WindowBackgroundBrush}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="280" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
+        <!-- ───────── Barra lateral ───────── -->
         <Border Grid.Column="0"
                 Background="{StaticResource SidebarBackgroundBrush}"
                 BorderBrush="{StaticResource BorderBrush}"
@@ -31,7 +98,7 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Orientation="Horizontal" Margin="22,22,16,18">
-                    <Border Width="34" Height="34" CornerRadius="8" Background="#193E52">
+                    <Border Width="36" Height="36" CornerRadius="8" Background="#193E52">
                         <TextBlock Text="&#xE9F9;"
                                    FontFamily="Segoe Fluent Icons"
                                    FontSize="18"
@@ -39,46 +106,88 @@
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
                     </Border>
-                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="VPS Monitor" FontSize="17" FontWeight="SemiBold" />
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="VPS Monitor" FontSize="16" FontWeight="SemiBold" />
                         <TextBlock Text="Linux · SSH" Style="{StaticResource MutedText}" />
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" Margin="0,0,0,14">
-                    <Button Style="{StaticResource NavButton}" Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Resumen}" Command="{Binding NavigateCommand}" CommandParameter="Resumen">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
-                            <TextBlock Text="Resumen" />
-                        </StackPanel>
+                <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                    <Button Style="{StaticResource NavButton}"
+                            Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Resumen}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="Resumen">
+                        <Grid>
+                            <Border Width="3" Height="18" CornerRadius="2" HorizontalAlignment="Left" Margin="-12,0,0,0"
+                                    Background="{StaticResource AccentBrush}"
+                                    Visibility="{Binding CurrentPage, Converter={StaticResource PageSelectionVisibilityConverter}, ConverterParameter=Resumen}" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
+                                <TextBlock Text="Resumen" FontWeight="{Binding CurrentPage, Converter={StaticResource PageSelectionWeightConverter}, ConverterParameter=Resumen}" />
+                            </StackPanel>
+                        </Grid>
                     </Button>
-                    <Button Style="{StaticResource NavButton}" Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Servidores}" Command="{Binding NavigateCommand}" CommandParameter="Servidores">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE950;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
-                            <TextBlock Text="Servidores" />
-                        </StackPanel>
+                    <Button Style="{StaticResource NavButton}"
+                            Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Servidores}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="Servidores">
+                        <Grid>
+                            <Border Width="3" Height="18" CornerRadius="2" HorizontalAlignment="Left" Margin="-12,0,0,0"
+                                    Background="{StaticResource AccentBrush}"
+                                    Visibility="{Binding CurrentPage, Converter={StaticResource PageSelectionVisibilityConverter}, ConverterParameter=Servidores}" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE950;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
+                                <TextBlock Text="Servidores" FontWeight="{Binding CurrentPage, Converter={StaticResource PageSelectionWeightConverter}, ConverterParameter=Servidores}" />
+                            </StackPanel>
+                        </Grid>
                     </Button>
-                    <Button Style="{StaticResource NavButton}" Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Alertas}" Command="{Binding NavigateCommand}" CommandParameter="Alertas">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xEA8F;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
-                            <TextBlock Text="Alertas" />
-                        </StackPanel>
+                    <Button Style="{StaticResource NavButton}"
+                            Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Alertas}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="Alertas">
+                        <Grid>
+                            <Border Width="3" Height="18" CornerRadius="2" HorizontalAlignment="Left" Margin="-12,0,0,0"
+                                    Background="{StaticResource AccentBrush}"
+                                    Visibility="{Binding CurrentPage, Converter={StaticResource PageSelectionVisibilityConverter}, ConverterParameter=Alertas}" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xEA8F;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
+                                <TextBlock Text="Alertas" FontWeight="{Binding CurrentPage, Converter={StaticResource PageSelectionWeightConverter}, ConverterParameter=Alertas}" />
+                            </StackPanel>
+                            <Border HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    MinWidth="22"
+                                    Padding="7,1"
+                                    CornerRadius="10"
+                                    Background="#3B2B15"
+                                    Visibility="{Binding HasAlerts, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding AlertCount}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FFD38A"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Grid>
                     </Button>
-                    <Button Style="{StaticResource NavButton}" Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Configuración}" Command="{Binding NavigateCommand}" CommandParameter="Configuración">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
-                            <TextBlock Text="Configuración" />
-                        </StackPanel>
+                    <Button Style="{StaticResource NavButton}"
+                            Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Configuración}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="Configuración">
+                        <Grid>
+                            <Border Width="3" Height="18" CornerRadius="2" HorizontalAlignment="Left" Margin="-12,0,0,0"
+                                    Background="{StaticResource AccentBrush}"
+                                    Visibility="{Binding CurrentPage, Converter={StaticResource PageSelectionVisibilityConverter}, ConverterParameter=Configuración}" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons" Width="28" FontSize="16" />
+                                <TextBlock Text="Configuración" FontWeight="{Binding CurrentPage, Converter={StaticResource PageSelectionWeightConverter}, ConverterParameter=Configuración}" />
+                            </StackPanel>
+                        </Grid>
                     </Button>
                 </StackPanel>
 
-                <Grid Grid.Row="2" Margin="20,0,14,10">
+                <Grid Grid.Row="2" Margin="22,0,14,8">
                     <TextBlock Text="SERVIDORES" Style="{StaticResource MutedText}" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <Button HorizontalAlignment="Right"
-                            Width="40"
-                            Height="40"
-                            Padding="0"
-                            Style="{StaticResource ButtonBase}"
+                            Style="{StaticResource IconButton}"
                             ToolTip="Agregar VPS"
                             AutomationProperties.Name="Agregar VPS"
                             Click="AddServerClicked">
@@ -104,7 +213,7 @@
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListBoxItem">
                                         <Border x:Name="Root"
-                                                Padding="12,10"
+                                                Padding="10,8"
                                                 CornerRadius="6"
                                                 Background="{TemplateBinding Background}"
                                                 BorderBrush="{TemplateBinding BorderBrush}"
@@ -112,15 +221,15 @@
                                             <ContentPresenter />
                                         </Border>
                                         <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Root" Property="Background" Value="#19222C" />
+                                            </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
                                                 <Setter TargetName="Root" Property="Background" Value="#193047" />
                                                 <Setter TargetName="Root" Property="BorderBrush" Value="#275C82" />
                                             </Trigger>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Root" Property="Background" Value="#19222C" />
-                                            </Trigger>
                                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                                <Setter TargetName="Root" Property="BorderBrush" Value="#66B5FF" />
+                                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource FocusBrush}" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -132,41 +241,58 @@
                         <DataTemplate>
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="40" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Width="34" Height="34" CornerRadius="17" Background="#27313B">
-                                    <TextBlock Text="&#xE950;" FontFamily="Segoe Fluent Icons" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border Width="34" Height="34" CornerRadius="17" Background="{Binding StatusBackground}"
+                                        ToolTip="{Binding StatusLabel}"
+                                        AutomationProperties.Name="{Binding StatusLabel}">
+                                    <TextBlock Text="{Binding StatusIcon}"
+                                               FontFamily="Segoe Fluent Icons"
+                                               FontSize="15"
+                                               Foreground="{Binding StatusColor}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
                                 </Border>
-                                <StackPanel Grid.Column="1" Margin="8,0,4,0">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Endpoint}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+                                <StackPanel Grid.Column="1" Margin="10,0,4,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    <TextBlock Text="{Binding Endpoint}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                                 </StackPanel>
-                                <Ellipse Grid.Column="2"
-                                         Width="9"
-                                         Height="9"
-                                         Margin="4,0,8,0"
-                                         Fill="{Binding StatusColor}"
-                                         ToolTip="{Binding StatusLabel}"
-                                         AutomationProperties.Name="{Binding StatusLabel}" />
-                                <Button Grid.Column="3"
-                                        Width="30"
-                                        Height="30"
+                                <Button Grid.Column="2"
+                                        Width="32"
+                                        Height="32"
+                                        MinHeight="32"
                                         Padding="0"
-                                        Style="{StaticResource DangerButton}"
+                                        VerticalAlignment="Center"
                                         ToolTip="Eliminar servidor"
                                         AutomationProperties.Name="Eliminar servidor"
                                         Click="DeleteServerFromListClicked">
-                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons" FontSize="13" />
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
+                                            <!-- Visible solo al apuntar, seleccionar o navegar con teclado: evita borrados accidentales. -->
+                                            <Setter Property="Opacity" Value="0" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="Opacity" Value="1" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="Opacity" Value="1" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="Opacity" Value="1" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons" FontSize="13" Foreground="#FF98A2" />
                                 </Button>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <Border Grid.Row="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="20,16">
+                <Border Grid.Row="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="22,16">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE73E;" FontFamily="Segoe Fluent Icons" Foreground="{StaticResource SuccessBrush}" FontSize="16" />
                         <StackPanel Margin="10,0,0,0">
@@ -178,8 +304,10 @@
             </Grid>
         </Border>
 
+        <!-- ───────── Contenido ───────── -->
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
@@ -189,20 +317,28 @@
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="0,0,0,1">
                 <Grid>
-                    <StackPanel>
-                        <TextBlock Text="{Binding PageTitle}" FontSize="28" FontWeight="SemiBold" />
-                        <TextBlock Text="Monitoreo seguro y en tiempo real" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding PageTitle}" FontSize="30" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding PageSubtitle}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
                     </StackPanel>
-                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                    <!-- Acciones de gestión solo donde aplican: una acción primaria por vista. -->
+                    <StackPanel HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Visibility="{Binding IsServersPage, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Button x:Name="EditServerButton"
                                 Margin="0,0,8,0"
                                 Style="{StaticResource ButtonBase}"
-                                Content="Editar"
                                 IsEnabled="{Binding HasSelection}"
-                                Click="EditServerClicked" />
-                        <Button Style="{StaticResource PrimaryButton}" Click="AddServerClicked">
+                                Click="EditServerClicked">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons" Margin="0,0,8,0" />
+                                <TextBlock Text="&#xE70F;" FontFamily="Segoe Fluent Icons" Margin="0,1,8,0" />
+                                <TextBlock Text="Editar" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource PrimaryButton}" MinHeight="44" Click="AddServerClicked">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons" Margin="0,1,8,0" />
                                 <TextBlock Text="Agregar VPS" />
                             </StackPanel>
                         </Button>
@@ -210,123 +346,269 @@
                 </Grid>
             </Border>
 
-            <ScrollViewer Grid.Row="1"
-                          Background="{StaticResource WindowBackgroundBrush}"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <Grid Margin="32,26,32,36">
-                    <Border x:Name="Banner"
-                            VerticalAlignment="Top"
-                            Padding="12"
-                            CornerRadius="6"
-                            Background="#3B2B15"
-                            BorderBrush="#805A20"
-                            BorderThickness="1"
-                            Panel.ZIndex="10">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Visibility" Value="Visible" />
+            <!-- Aviso global: fuera del flujo del contenido para no taparlo. -->
+            <Border Grid.Row="1" Margin="32,16,32,0" Padding="14,10" CornerRadius="6" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Setter Property="Background" Value="#173528" />
+                        <Setter Property="BorderBrush" Value="#2A6B47" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BannerMessage}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding BannerIsError}" Value="True">
+                                <Setter Property="Background" Value="#3B1E24" />
+                                <Setter Property="BorderBrush" Value="#803844" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontFamily="Segoe Fluent Icons" FontSize="16" Margin="0,1,12,0" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#xE73E;" />
+                                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding BannerMessage}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    <DataTrigger Binding="{Binding BannerIsError}" Value="True">
+                                        <Setter Property="Text" Value="&#xEA39;" />
+                                        <Setter Property="Foreground" Value="{StaticResource CriticalBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Border.Style>
-                        <TextBlock Text="{Binding BannerMessage}" Foreground="#FFD38A" />
-                    </Border>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Grid.Column="1" Text="{Binding BannerMessage}" VerticalAlignment="Center" />
+                    <Button Grid.Column="2"
+                            Width="32"
+                            Height="32"
+                            MinHeight="32"
+                            Padding="0"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Style="{StaticResource ButtonBase}"
+                            ToolTip="Cerrar aviso"
+                            AutomationProperties.Name="Cerrar aviso"
+                            Command="{Binding DismissBannerCommand}">
+                        <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="12" />
+                    </Button>
+                </Grid>
+            </Border>
 
+            <ScrollViewer Grid.Row="2"
+                          Background="{StaticResource WindowBackgroundBrush}"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <Grid Margin="32,24,32,36">
+
+                    <!-- ═════ Resumen ═════ -->
                     <Grid Visibility="{Binding IsSummaryPage, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <UniformGrid Columns="3" Margin="0,0,0,18">
-                            <Border Style="{StaticResource Card}" Margin="0,0,12,0">
-                                <StackPanel>
-                                    <TextBlock Text="En línea" Foreground="{StaticResource TextSecondaryBrush}" />
-                                    <TextBlock Text="{Binding OnlineCount}" FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" />
+
+                        <UniformGrid Columns="3" Margin="0,0,0,20">
+                            <Border Style="{StaticResource Card}" Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="44" Height="44" CornerRadius="10" Background="#1F42D17E">
+                                        <TextBlock Text="&#xE73E;" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{StaticResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="En línea" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding OnlineCount}" FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource Card}" Margin="6,0">
-                                <StackPanel>
-                                    <TextBlock Text="Con advertencias" Foreground="{StaticResource TextSecondaryBrush}" />
-                                    <TextBlock Text="{Binding WarningCount}" FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource WarningBrush}" />
+                            <Border Style="{StaticResource Card}" Margin="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="44" Height="44" CornerRadius="10" Background="#26FFB020">
+                                        <TextBlock Text="&#xE7BA;" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{StaticResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Con advertencias" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding WarningCount}" FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource WarningBrush}" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource Card}" Margin="12,0,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Sin conexión" Foreground="{StaticResource TextSecondaryBrush}" />
-                                    <TextBlock Text="{Binding OfflineCount}" FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource CriticalBrush}" />
+                            <Border Style="{StaticResource Card}" Margin="8,0,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="44" Height="44" CornerRadius="10" Background="#26FF5C6C">
+                                        <TextBlock Text="&#xEA39;" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{StaticResource CriticalBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Sin conexión" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding OfflineCount}" FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource CriticalBrush}" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </UniformGrid>
-                        <Border Grid.Row="1" Style="{StaticResource Card}">
-                            <StackPanel>
-                                <TextBlock Text="Estado de servidores" FontSize="18" FontWeight="SemiBold" />
-                                <ItemsControl ItemsSource="{Binding Servers}" Margin="0,12,0,0">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,7">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="160" />
-                                                    <ColumnDefinition Width="120" />
-                                                </Grid.ColumnDefinitions>
-                                                <Ellipse Width="9" Height="9" Fill="{Binding StatusColor}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="10,0" FontWeight="SemiBold" />
-                                                <TextBlock Grid.Column="2" Text="{Binding CpuText, StringFormat=CPU {0}}" Foreground="{StaticResource TextSecondaryBrush}" />
-                                                <TextBlock Grid.Column="3" Text="{Binding StatusLabel}" Foreground="{Binding StatusColor}" />
+
+                        <StackPanel Grid.Row="1">
+                            <TextBlock Text="Estado de servidores" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <ItemsControl ItemsSource="{Binding Servers}" Focusable="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource CardButton}"
+                                                Margin="0,0,12,12"
+                                                Command="{Binding DataContext.OpenServerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Abrir detalle"
+                                                AutomationProperties.Name="{Binding Name}">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                            <TextBlock Text="{Binding UserEndpoint}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                            <TextBlock Text="  ·  " Style="{StaticResource MutedText}" />
+                                                            <TextBlock Text="{Binding AuthIcon}" FontFamily="Segoe Fluent Icons" Style="{StaticResource MutedText}" Margin="0,1,5,0" />
+                                                            <TextBlock Text="{Binding AuthText}" Style="{StaticResource MutedText}" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <ContentControl Grid.Column="1" Content="{Binding}" ContentTemplate="{StaticResource StatusChipTemplate}" Focusable="False" />
+                                                </Grid>
+
+                                                <Grid Grid.Row="1" Margin="0,16,0,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="72" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="56" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="CPU" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,5" />
+                                                    <ProgressBar Grid.Column="1" Value="{Binding CpuPercent, Mode=OneWay}" Maximum="100" Margin="0,5"
+                                                                 Foreground="{Binding CpuPercent, Converter={StaticResource UsageBrushConverter}}" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding CpuText}" TextAlignment="Right" Margin="0,5" />
+
+                                                    <TextBlock Grid.Row="1" Text="Memoria" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,5" />
+                                                    <ProgressBar Grid.Row="1" Grid.Column="1" Value="{Binding MemoryPercent, Mode=OneWay}" Maximum="100" Margin="0,5"
+                                                                 Foreground="{Binding MemoryPercent, Converter={StaticResource UsageBrushConverter}}" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding MemoryPercentText}" TextAlignment="Right" Margin="0,5" />
+
+                                                    <TextBlock Grid.Row="2" Text="Disco" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,5" />
+                                                    <ProgressBar Grid.Row="2" Grid.Column="1" Value="{Binding DiskPercent, Mode=OneWay}" Maximum="100" Margin="0,5"
+                                                                 Foreground="{Binding DiskPercent, Converter={StaticResource UsageBrushConverter}}" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding DiskPercentText}" TextAlignment="Right" Margin="0,5" />
+                                                </Grid>
+
+                                                <Grid Grid.Row="2" Margin="0,14,0,0">
+                                                    <TextBlock Text="{Binding LastUpdatedText}" Style="{StaticResource MutedText}" HorizontalAlignment="Left" />
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                        <TextBlock Text="&#xE916;" FontFamily="Segoe Fluent Icons" Style="{StaticResource MutedText}" Margin="0,1,5,0" />
+                                                        <TextBlock Text="{Binding UptimeText}" Style="{StaticResource MutedText}" />
+                                                        <TextBlock Text="    " Style="{StaticResource MutedText}" />
+                                                        <TextBlock Text="&#xE9D9;" FontFamily="Segoe Fluent Icons" Style="{StaticResource MutedText}" Margin="0,1,5,0" />
+                                                        <TextBlock Text="{Binding LatencyText}" Style="{StaticResource MutedText}" />
+                                                    </StackPanel>
+                                                </Grid>
                                             </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Border HorizontalAlignment="Center" MaxWidth="520" Margin="0,24,0,0">
+                                <Border.Style>
+                                    <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasServers}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="Todavía no hay servidores" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Agrega una VPS para ver aquí su estado en tiempo real." Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center" Margin="0,6,0,16" />
+                                    <Button Style="{StaticResource PrimaryButton}" MinHeight="44" Content="Agregar VPS" Click="AddServerClicked" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </Grid>
 
+                    <!-- ═════ Servidores (detalle) ═════ -->
                     <Grid Visibility="{Binding IsServersPage, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Border Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel DataContext="{Binding SelectedServer}">
-                                <Grid Margin="0,0,0,18">
+                                <Grid Margin="0,0,0,16">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Name}" Style="{StaticResource SectionTitle}" />
-                                            <Border Margin="12,2,0,0" Padding="10,4" CornerRadius="5" Background="#173528">
-                                                <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusColor}" FontWeight="SemiBold" />
-                                            </Border>
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" />
+                                            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource StatusChipTemplate}" Margin="14,2,0,0" Focusable="False" />
                                         </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                            <TextBlock Text="{Binding Endpoint}" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <WrapPanel Margin="0,8,0,0">
+                                            <TextBlock Text="{Binding UserEndpoint}" Foreground="{StaticResource TextSecondaryBrush}" />
+                                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBlock Text="{Binding AuthIcon}" FontFamily="Segoe Fluent Icons" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,6,0" />
+                                            <TextBlock Text="{Binding AuthText}" Foreground="{StaticResource TextSecondaryBrush}" />
                                             <TextBlock Text="  ·  " Foreground="{StaticResource TextMutedBrush}" />
                                             <TextBlock Text="{Binding DistributionText}" Foreground="{StaticResource TextSecondaryBrush}" />
                                             <TextBlock Text="  ·  " Foreground="{StaticResource TextMutedBrush}" />
                                             <TextBlock Text="{Binding LastUpdatedText}" Foreground="{StaticResource TextSecondaryBrush}" />
-                                        </StackPanel>
+                                        </WrapPanel>
                                     </StackPanel>
                                     <Button HorizontalAlignment="Right"
-                                            VerticalAlignment="Center"
+                                            VerticalAlignment="Top"
                                             Style="{StaticResource DangerButton}"
-                                            Content="Eliminar VPS"
-                                            Click="DeleteServerClicked" />
+                                            Click="DeleteServerClicked">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons" Margin="0,1,8,0" />
+                                            <TextBlock Text="Eliminar VPS" />
+                                        </StackPanel>
+                                    </Button>
                                 </Grid>
 
-                                <UniformGrid Columns="5" Margin="0,0,0,14">
-                                    <Border Style="{StaticResource Card}" Margin="0,0,6,0">
-                                        <StackPanel><TextBlock Text="Uptime" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding UptimeText}" FontSize="23" FontWeight="SemiBold" /></StackPanel>
+                                <!-- Problema de conexión: explicación y causa visibles, no escondidas en una tarjeta. -->
+                                <Border Margin="0,0,0,16" Padding="14,12" CornerRadius="6" BorderThickness="1"
+                                        Background="{Binding StatusBackground}" BorderBrush="{Binding StatusColor}"
+                                        Visibility="{Binding HasIssue, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding StatusIcon}" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{Binding StatusColor}" Margin="0,2,12,0" VerticalAlignment="Top" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding StatusLabel}" FontWeight="SemiBold" Foreground="{Binding StatusColor}" />
+                                            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <UniformGrid Columns="4" Margin="0,0,0,14">
+                                    <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,7,0">
+                                        <StackPanel><TextBlock Text="Uptime" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding UptimeText}" Style="{StaticResource MetricValue}" /></StackPanel>
                                     </Border>
-                                    <Border Style="{StaticResource Card}" Margin="3,0">
-                                        <StackPanel><TextBlock Text="Carga" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding LoadText}" FontSize="23" FontWeight="SemiBold" /><TextBlock Text="{Binding LoadDetails}" Style="{StaticResource MutedText}" /></StackPanel>
+                                    <Border Style="{StaticResource Card}" Padding="16" Margin="7,0">
+                                        <StackPanel><TextBlock Text="Carga (1m)" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding LoadText}" Style="{StaticResource MetricValue}" /><TextBlock Text="{Binding LoadDetails}" Style="{StaticResource MutedText}" /></StackPanel>
                                     </Border>
-                                    <Border Style="{StaticResource Card}" Margin="3,0">
-                                        <StackPanel><TextBlock Text="Procesos" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding ProcessesText}" FontSize="23" FontWeight="SemiBold" /></StackPanel>
+                                    <Border Style="{StaticResource Card}" Padding="16" Margin="7,0">
+                                        <StackPanel><TextBlock Text="Procesos" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding ProcessesText}" Style="{StaticResource MetricValue}" /></StackPanel>
                                     </Border>
-                                    <Border Style="{StaticResource Card}" Margin="3,0">
-                                        <StackPanel><TextBlock Text="Temperatura" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding TemperatureText}" FontSize="23" FontWeight="SemiBold" /></StackPanel>
-                                    </Border>
-                                    <Border Style="{StaticResource Card}" Margin="6,0,0,0">
-                                        <StackPanel><TextBlock Text="SSH" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding StatusLabel}" FontSize="19" FontWeight="SemiBold" Foreground="{Binding StatusColor}" /><TextBlock Text="{Binding StatusMessage}" Style="{StaticResource MutedText}" /></StackPanel>
+                                    <Border Style="{StaticResource Card}" Padding="16" Margin="7,0,0,0">
+                                        <StackPanel><TextBlock Text="Temperatura" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding TemperatureText}" Style="{StaticResource MetricValue}" /></StackPanel>
                                     </Border>
                                 </UniformGrid>
 
@@ -335,14 +617,14 @@
                                     <Border Style="{StaticResource Card}" Margin="0,0,7,0">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="240" /></Grid.RowDefinitions>
-                                            <Grid><TextBlock Text="CPU" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="{Binding CpuText}" HorizontalAlignment="Right" FontSize="22" Foreground="{StaticResource AccentBrush}" /></Grid>
+                                            <Grid><TextBlock Text="CPU" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="{Binding CpuText}" HorizontalAlignment="Right" FontSize="24" Foreground="{StaticResource AccentBrush}" /></Grid>
                                             <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding CpuSeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding PercentageYAxes}" LegendPosition="Hidden" AutomationProperties.Name="{Binding ChartSummary}" />
                                         </Grid>
                                     </Border>
                                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0,0,0">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="240" /></Grid.RowDefinitions>
-                                            <Grid><TextBlock Text="Memoria" FontSize="17" FontWeight="SemiBold" /><StackPanel HorizontalAlignment="Right"><TextBlock Text="{Binding MemoryText}" FontSize="17" Foreground="{StaticResource AccentBlueBrush}" /><TextBlock Text="{Binding MemoryPercentText}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" /></StackPanel></Grid>
+                                            <Grid><TextBlock Text="Memoria" FontSize="16" FontWeight="SemiBold" /><StackPanel HorizontalAlignment="Right"><TextBlock Text="{Binding MemoryText}" FontSize="16" Foreground="{StaticResource AccentBlueBrush}" HorizontalAlignment="Right" /><TextBlock Text="{Binding MemoryPercentText}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" /></StackPanel></Grid>
                                             <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding MemorySeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding PercentageYAxes}" LegendPosition="Hidden" AutomationProperties.Name="Gráfica de memoria de los últimos 60 segundos" />
                                         </Grid>
                                     </Border>
@@ -352,23 +634,24 @@
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1.2*" /><ColumnDefinition Width="1.2*" /></Grid.ColumnDefinitions>
                                     <Border Style="{StaticResource Card}" Margin="0,0,7,0">
                                         <StackPanel>
-                                            <Grid><TextBlock Text="Disco" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="{Binding DiskPercentText}" HorizontalAlignment="Right" FontSize="22" Foreground="{StaticResource WarningBrush}" /></Grid>
-                                            <TextBlock Text="{Binding DiskText}" Margin="0,22,0,8" Foreground="{StaticResource TextSecondaryBrush}" />
-                                            <ProgressBar Value="{Binding DiskPercent, Mode=OneWay}" Maximum="100" />
+                                            <Grid><TextBlock Text="Disco" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="{Binding DiskPercentText}" HorizontalAlignment="Right" FontSize="24" /></Grid>
+                                            <TextBlock Text="{Binding DiskText}" Margin="0,22,0,10" Foreground="{StaticResource TextSecondaryBrush}" />
+                                            <ProgressBar Value="{Binding DiskPercent, Mode=OneWay}" Maximum="100" Height="10"
+                                                         Foreground="{Binding DiskPercent, Converter={StaticResource UsageBrushConverter}}" />
                                             <TextBlock Text="Sistema de archivos raíz" Margin="0,12,0,0" Style="{StaticResource MutedText}" />
                                         </StackPanel>
                                     </Border>
                                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="190" /></Grid.RowDefinitions>
-                                            <Grid><TextBlock Text="Red" FontSize="17" FontWeight="SemiBold" /><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding NetworkReceiveText}" Foreground="{StaticResource AccentBlueBrush}" /><TextBlock Text="   " /><TextBlock Text="{Binding NetworkTransmitText}" Foreground="{StaticResource AccentBrush}" /></StackPanel></Grid>
+                                            <Grid><TextBlock Text="Red" FontSize="16" FontWeight="SemiBold" /><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding NetworkReceiveText}" Foreground="{StaticResource AccentBlueBrush}" /><TextBlock Text="   " /><TextBlock Text="{Binding NetworkTransmitText}" Foreground="{StaticResource AccentBrush}" /></StackPanel></Grid>
                                             <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding NetworkSeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding RateYAxes}" LegendPosition="Bottom" AutomationProperties.Name="Gráfica de red de los últimos 60 segundos" />
                                         </Grid>
                                     </Border>
                                     <Border Grid.Column="2" Style="{StaticResource Card}" Margin="7,0,0,0">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="190" /></Grid.RowDefinitions>
-                                            <Grid><TextBlock Text="Latencia" FontSize="17" FontWeight="SemiBold" /><StackPanel HorizontalAlignment="Right"><TextBlock Text="{Binding LatencyText}" FontSize="19" Foreground="{StaticResource AccentBrush}" /><TextBlock Text="{Binding LatencyMethodText}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" /></StackPanel></Grid>
+                                            <Grid><TextBlock Text="Latencia" FontSize="16" FontWeight="SemiBold" /><StackPanel HorizontalAlignment="Right"><TextBlock Text="{Binding LatencyText}" FontSize="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Right" /><TextBlock Text="{Binding LatencyMethodText}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" /></StackPanel></Grid>
                                             <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding LatencySeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding LatencyYAxes}" LegendPosition="Hidden" AutomationProperties.Name="Gráfica de latencia de los últimos 60 segundos" />
                                         </Grid>
                                     </Border>
@@ -378,71 +661,122 @@
 
                         <Border HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                MaxWidth="520">
+                                MaxWidth="520"
+                                Margin="0,60,0,0">
                             <Border.Style>
                                 <Style TargetType="Border" BasedOn="{StaticResource Card}">
                                     <Setter Property="Visibility" Value="Collapsed" />
+                                    <Setter Property="Padding" Value="32" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding HasSelection}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="&#xE950;" FontFamily="Segoe Fluent Icons" FontSize="36" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" />
-                                <TextBlock Text="Agrega tu primera VPS" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0" />
-                                <TextBlock Text="Necesitarás la IP, el usuario SSH y la contraseña." Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center" Margin="0,8,0,18" />
-                                <Button Style="{StaticResource PrimaryButton}" Content="Agregar VPS" Click="AddServerClicked" HorizontalAlignment="Center" />
+                                <Border Width="64" Height="64" CornerRadius="16" Background="#193E52" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE950;" FontFamily="Segoe Fluent Icons" FontSize="30" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Agrega tu primera VPS" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,0" />
+                                <TextBlock Text="Necesitarás la IP o dominio, el usuario SSH y una contraseña o tu clave SSH."
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextAlignment="Center"
+                                           Margin="0,8,0,22" />
+                                <Button Style="{StaticResource PrimaryButton}" MinHeight="44" Click="AddServerClicked" HorizontalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons" Margin="0,1,8,0" />
+                                        <TextBlock Text="Agregar VPS" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
                     </Grid>
 
+                    <!-- ═════ Alertas ═════ -->
                     <Grid Visibility="{Binding IsAlertsPage, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                        <TextBlock Text="Las alertas de esta sesión aparecen aquí. No se guarda historial." Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,16" />
-                        <Border Grid.Row="1" Style="{StaticResource Card}">
+                        <Border Style="{StaticResource Card}" MinHeight="220">
                             <Grid>
-                                <ItemsControl ItemsSource="{Binding Alerts}">
+                                <ItemsControl ItemsSource="{Binding Alerts}" Focusable="False">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid Margin="0,8">
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="14" /><ColumnDefinition Width="180" /><ColumnDefinition Width="180" /><ColumnDefinition Width="*" /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
-                                                <Ellipse Width="9" Height="9" Fill="{StaticResource WarningBrush}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding ServerName}" Margin="10,0" FontWeight="SemiBold" />
-                                                <TextBlock Grid.Column="2" Text="{Binding Title}" Foreground="{StaticResource TextSecondaryBrush}" />
-                                                <TextBlock Grid.Column="3" Text="{Binding Message}" Foreground="{StaticResource TextSecondaryBrush}" />
-                                                <TextBlock Grid.Column="4" Text="{Binding Time}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" />
-                                            </Grid>
+                                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,12">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="32" />
+                                                        <ColumnDefinition Width="180" />
+                                                        <ColumnDefinition Width="180" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="80" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsRecovery}" Value="True">
+                                                                        <Setter Property="Text" Value="&#xE73E;" />
+                                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Grid.Column="1" Text="{Binding ServerName}" Margin="0,0,10,0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Title}" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Grid.Column="3" Text="{Binding Message}" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Grid.Column="4" Text="{Binding Time}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" />
+                                                </Grid>
+                                            </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Text="No hay alertas en esta sesión."
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource TextSecondaryBrush}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding HasAlerts}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="&#xE73E;" FontFamily="Segoe Fluent Icons" FontSize="28" Foreground="{StaticResource SuccessBrush}" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Todo en orden" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                                    <TextBlock Text="No hay alertas en esta sesión." Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                </StackPanel>
                             </Grid>
                         </Border>
                     </Grid>
 
+                    <!-- ═════ Configuración ═════ -->
                     <Grid Visibility="{Binding IsSettingsPage, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="560" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <Border Style="{StaticResource Card}">
+                        <Border Style="{StaticResource Card}" Padding="24">
                             <StackPanel>
                                 <TextBlock Text="Límites globales" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="Se aplican a todas las VPS salvo que una tenga valores propios." Foreground="{StaticResource TextSecondaryBrush}" Margin="0,5,0,20" />
-                                <TextBlock Text="CPU (%)" FontWeight="SemiBold" /><TextBox Text="{Binding CpuThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,14" />
-                                <TextBlock Text="Memoria (%)" FontWeight="SemiBold" /><TextBox Text="{Binding MemoryThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,14" />
-                                <TextBlock Text="Disco (%)" FontWeight="SemiBold" /><TextBox Text="{Binding DiskThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,14" />
-                                <TextBlock Text="Latencia (ms)" FontWeight="SemiBold" /><TextBox Text="{Binding LatencyThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,20" />
-                                <Button Style="{StaticResource PrimaryButton}" Content="Guardar configuración" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="CPU (%)" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding CpuThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,16" AutomationProperties.Name="Límite global de CPU" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="Memoria (%)" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding MemoryThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,16" AutomationProperties.Name="Límite global de memoria" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="Disco (%)" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding DiskThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,16" AutomationProperties.Name="Límite global de disco" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="Latencia (ms)" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding LatencyThreshold, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,16" AutomationProperties.Name="Límite global de latencia" />
+                                    </StackPanel>
+                                </Grid>
+                                <Button Style="{StaticResource PrimaryButton}" MinHeight="44" Content="Guardar configuración" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
                     </Grid>

@@ -25,4 +25,13 @@ public sealed class VpsServerTests
 
         Assert.Throws<ArgumentOutOfRangeException>(server.Validate);
     }
+
+    [Fact]
+    public void Validate_RequiresKeyPathForPrivateKeyAuth()
+    {
+        var server = VpsServer.Create("VPS", "10.0.0.1", 22, "root") with { AuthMethod = SshAuthMethod.PrivateKey };
+
+        Assert.Throws<ArgumentException>(server.Validate);
+        (server with { PrivateKeyPath = @"C:\Users\me\.ssh\id_ed25519" }).Validate();
+    }
 }

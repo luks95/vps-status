@@ -8,7 +8,9 @@ public sealed record VpsServer(
     string Username,
     bool IsEnabled,
     string? TrustedHostKeyFingerprint = null,
-    AlertThresholds? ThresholdOverrides = null)
+    AlertThresholds? ThresholdOverrides = null,
+    SshAuthMethod AuthMethod = SshAuthMethod.Password,
+    string? PrivateKeyPath = null)
 {
     public static VpsServer Create(string name, string host, int port, string username) =>
         new(Guid.NewGuid(), name.Trim(), host.Trim(), port, username.Trim(), true);
@@ -20,7 +22,17 @@ public sealed record VpsServer(
         if (string.IsNullOrWhiteSpace(Host)) throw new ArgumentException("La IP o dominio es obligatorio.");
         if (Port is < 1 or > 65535) throw new ArgumentOutOfRangeException(nameof(Port), "El puerto debe estar entre 1 y 65535.");
         if (string.IsNullOrWhiteSpace(Username)) throw new ArgumentException("El usuario es obligatorio.");
+        if (AuthMethod == SshAuthMethod.PrivateKey && string.IsNullOrWhiteSpace(PrivateKeyPath))
+        {
+            throw new ArgumentException("La ruta de la clave privada es obligatoria.");
+        }
     }
+}
+
+public enum SshAuthMethod
+{
+    Password = 0,
+    PrivateKey = 1
 }
 
 public sealed record AlertThresholds(

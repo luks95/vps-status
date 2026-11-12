@@ -23,6 +23,7 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
     private bool _isInitialized;
     private bool _isBusy;
     private string? _bannerMessage;
+    private bool _bannerIsError;
     private AppSettings _settings = AppSettings.Default;
 
     public DashboardViewModel(
@@ -40,12 +41,21 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
         _monitoringCoordinator.StateChanged += OnMonitorStateChanged;
         NavigateCommand = new RelayCommand<string>(page => CurrentPage = page ?? "Servidores");
         SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAsync, () => !IsBusy);
+        OpenServerCommand = new RelayCommand<ServerItemViewModel>(server =>
+        {
+            if (server is null) return;
+            SelectedServer = server;
+            CurrentPage = "Servidores";
+        });
+        DismissBannerCommand = new RelayCommand(() => BannerMessage = null);
     }
 
     public ObservableCollection<ServerItemViewModel> Servers { get; } = [];
     public ObservableCollection<AlertItemViewModel> Alerts { get; } = [];
     public RelayCommand<string> NavigateCommand { get; }
     public AsyncRelayCommand SaveSettingsCommand { get; }
+    public RelayCommand<ServerItemViewModel> OpenServerCommand { get; }
+    public RelayCommand DismissBannerCommand { get; }
 
     public ServerItemViewModel? SelectedServer
     {
@@ -68,16 +78,27 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
             OnPropertyChanged(nameof(IsAlertsPage));
             OnPropertyChanged(nameof(IsSettingsPage));
             OnPropertyChanged(nameof(PageTitle));
+            OnPropertyChanged(nameof(PageSubtitle));
         }
     }
 
     public string PageTitle => CurrentPage;
+
+    public string PageSubtitle => CurrentPage switch
+    {
+        "Resumen" => "Estado general de todas tus VPS de un vistazo",
+        "Servidores" => "Métricas en vivo de los últimos 60 segundos",
+        "Alertas" => "Eventos de esta sesión; no se guarda historial",
+        "Configuración" => "Límites globales de alerta",
+        _ => string.Empty
+    };
     public bool IsSummaryPage => CurrentPage == "Resumen";
     public bool IsServersPage => CurrentPage == "Servidores";
     public bool IsAlertsPage => CurrentPage == "Alertas";
     public bool IsSettingsPage => CurrentPage == "Configuración";
     public bool HasServers => Servers.Count > 0;
     public bool HasAlerts => Alerts.Count > 0;
+    public int AlertCount => Alerts.Count;
     public bool HasSelection => SelectedServer is not null;
     public int OnlineCount => Servers.Count(server => server.Status == ConnectionStatus.Online);
     public int WarningCount => Servers.Count(server => server.Status is ConnectionStatus.Warning or ConnectionStatus.Reconnecting);
@@ -96,6 +117,27 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
     {
         get => _bannerMessage;
         private set => SetProperty(ref _bannerMessage, value);
+    }
+
+    public bool BannerIsError
+    {
+        get => _bannerIsError;
+        private set => SetProperty(ref _bannerIsError, value);
+    }
+
+    private void ShowBanner(string message, bool isError)
+    {
+        BannerIsError = isError;
+        BannerMessage = message;
+        if (isError) return;
+
+        // Los avisos de éxito se retiran solos; los errores permanecen hasta que se descartan.
+        _ = Task.Delay(TimeSpan.FromSeconds(4)).ContinueWith(
+            _ => _dispatcher.BeginInvoke(() =>
+            {
+                if (BannerMessage == message && !BannerIsError) BannerMessage = null;
+            }),
+            TaskScheduler.Default);
     }
 
     public double CpuThreshold { get; set; } = 90;
@@ -120,7 +162,7 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
         }
         catch (Exception exception)
         {
-            BannerMessage = $"No se pudo iniciar la aplicación: {exception.Message}";
+            ShowBanner($"No se pudo iniciar la aplicación: {exception.Message}", true);
         }
         finally
         {
@@ -190,7 +232,7 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
     {
         if (CpuThreshold is < 1 or > 100 || MemoryThreshold is < 1 or > 100 || DiskThreshold is < 1 or > 100 || LatencyThreshold < 1)
         {
-            BannerMessage = "Revisa los límites: los porcentajes deben estar entre 1 y 100 y la latencia debe ser positiva.";
+            ShowBanner("Revisa los límites: los porcentajes deben estar entre 1 y 100 y la latencia debe ser positiva.", true);
             return;
         }
 
@@ -202,7 +244,7 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
                 GlobalThresholds = new AlertThresholds(CpuThreshold, MemoryThreshold, DiskThreshold, LatencyThreshold)
             };
             await _settingsRepository.SaveAsync(_settings);
-            BannerMessage = "Configuración guardada.";
+            ShowBanner("Configuración guardada.", false);
         }
         finally
         {
@@ -226,6 +268,7 @@ public sealed class DashboardViewModel : ObservableObject, IAsyncDisposable
                 Alerts.Insert(0, item);
                 while (Alerts.Count > 100) Alerts.RemoveAt(Alerts.Count - 1);
                 OnPropertyChanged(nameof(HasAlerts));
+                OnPropertyChanged(nameof(AlertCount));
                 _notificationService.Show(
                     $"{server.Name} · {item.Title}",
                     item.Message,

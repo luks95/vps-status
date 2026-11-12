@@ -76,10 +76,19 @@ public sealed class SshServerProbe(
                 latency.Method,
                 observedFingerprint ?? server.TrustedHostKeyFingerprint ?? string.Empty);
         }
+        catch (PrivateKeyUnavailableException exception)
+        {
+            RemoveSession(server.Id, client);
+            return ProbeResult.Failure(ConnectionStatus.AuthenticationFailed, exception.Message);
+        }
         catch (SshAuthenticationException)
         {
             RemoveSession(server.Id, client);
-            return ProbeResult.Failure(ConnectionStatus.AuthenticationFailed, "Usuario o contraseña incorrectos.");
+            return ProbeResult.Failure(
+                ConnectionStatus.AuthenticationFailed,
+                server.AuthMethod == SshAuthMethod.PrivateKey
+                    ? "El servidor rechazó la clave SSH. Verifica el usuario y que la clave pública esté en authorized_keys."
+                    : "Usuario o contraseña incorrectos.");
         }
         catch (SshConnectionException) when (observedFingerprint is not null && server.TrustedHostKeyFingerprint is null)
         {
@@ -139,7 +148,9 @@ public sealed class SshServerProbe(
 
     private static SshClient CreateClient(VpsServer server, string password, Action<string> onFingerprint)
     {
-        var authentication = new PasswordAuthenticationMethod(server.Username, password);
+        AuthenticationMethod authentication = server.AuthMethod == SshAuthMethod.PrivateKey
+            ? new PrivateKeyAuthenticationMethod(server.Username, LoadPrivateKey(server.PrivateKeyPath, password))
+            : new PasswordAuthenticationMethod(server.Username, password);
         var connectionInfo = new ConnectionInfo(server.Host, server.Port, server.Username, authentication)
         {
             Timeout = ConnectTimeout
@@ -155,6 +166,40 @@ public sealed class SshServerProbe(
                 StringComparison.Ordinal);
         };
         return client;
+    }
+
+    private static PrivateKeyFile LoadPrivateKey(string? path, string passphrase)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new PrivateKeyUnavailableException("No se configuró la ruta de la clave privada.");
+        }
+
+        try
+        {
+            var fullPath = Environment.ExpandEnvironmentVariables(path.Trim());
+            return string.IsNullOrEmpty(passphrase)
+                ? new PrivateKeyFile(fullPath)
+                : new PrivateKeyFile(fullPath, passphrase);
+        }
+        catch (SshPassPhraseNullOrEmptyException)
+        {
+            throw new PrivateKeyUnavailableException("La clave privada está protegida: ingresa su passphrase.");
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            throw new PrivateKeyUnavailableException("No se encontró el archivo de la clave privada.");
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw new PrivateKeyUnavailableException("No fue posible leer el archivo de la clave privada.");
+        }
+        catch (Exception exception) when (exception is SshException or ArgumentException or InvalidOperationException
+            or FormatException or CryptographicException or NotSupportedException)
+        {
+            throw new PrivateKeyUnavailableException(
+                "No se pudo abrir la clave privada. Verifica la passphrase y que sea una clave OpenSSH o PEM (no .ppk).");
+        }
     }
 
     private void RemoveSession(Guid serverId, SshClient? expectedClient = null)
@@ -198,6 +243,8 @@ public sealed class SshServerProbe(
         private readonly int _port;
         private readonly string _username;
         private readonly string? _fingerprint;
+        private readonly SshAuthMethod _authMethod;
+        private readonly string? _keyPath;
         private readonly byte[] _passwordHash;
 
         public SessionEntry(VpsServer server, byte[] passwordHash, SshClient client)
@@ -206,6 +253,8 @@ public sealed class SshServerProbe(
             _port = server.Port;
             _username = server.Username;
             _fingerprint = server.TrustedHostKeyFingerprint;
+            _authMethod = server.AuthMethod;
+            _keyPath = server.PrivateKeyPath;
             _passwordHash = passwordHash;
             Client = client;
         }
@@ -218,6 +267,8 @@ public sealed class SshServerProbe(
             _port == server.Port &&
             string.Equals(_username, server.Username, StringComparison.Ordinal) &&
             string.Equals(_fingerprint, server.TrustedHostKeyFingerprint, StringComparison.Ordinal) &&
+            _authMethod == server.AuthMethod &&
+            string.Equals(_keyPath, server.PrivateKeyPath, StringComparison.OrdinalIgnoreCase) &&
             CryptographicOperations.FixedTimeEquals(_passwordHash, passwordHash);
 
         public void Dispose()
@@ -227,4 +278,6 @@ public sealed class SshServerProbe(
             Client.Dispose();
         }
     }
+
+    private sealed class PrivateKeyUnavailableException(string message) : Exception(message);
 }

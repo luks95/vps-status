@@ -31,7 +31,8 @@ public sealed class SqliteVpsRepository : IVpsRepository
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT id, name, host, port, username, is_enabled, host_fingerprint,
-                   cpu_threshold, memory_threshold, disk_threshold, latency_threshold
+                   cpu_threshold, memory_threshold, disk_threshold, latency_threshold,
+                   auth_method, private_key_path
             FROM vps_servers
             ORDER BY name COLLATE NOCASE;
             """;
@@ -49,7 +50,8 @@ public sealed class SqliteVpsRepository : IVpsRepository
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT id, name, host, port, username, is_enabled, host_fingerprint,
-                   cpu_threshold, memory_threshold, disk_threshold, latency_threshold
+                   cpu_threshold, memory_threshold, disk_threshold, latency_threshold,
+                   auth_method, private_key_path
             FROM vps_servers WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$id", id.ToString("D"));
@@ -66,10 +68,11 @@ public sealed class SqliteVpsRepository : IVpsRepository
         command.CommandText = """
             INSERT INTO vps_servers (
                 id, name, host, port, username, is_enabled, host_fingerprint,
-                cpu_threshold, memory_threshold, disk_threshold, latency_threshold)
+                cpu_threshold, memory_threshold, disk_threshold, latency_threshold,
+                auth_method, private_key_path)
             VALUES (
                 $id, $name, $host, $port, $username, $enabled, $fingerprint,
-                $cpu, $memory, $disk, $latency)
+                $cpu, $memory, $disk, $latency, $authMethod, $keyPath)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 host = excluded.host,
@@ -80,7 +83,9 @@ public sealed class SqliteVpsRepository : IVpsRepository
                 cpu_threshold = excluded.cpu_threshold,
                 memory_threshold = excluded.memory_threshold,
                 disk_threshold = excluded.disk_threshold,
-                latency_threshold = excluded.latency_threshold;
+                latency_threshold = excluded.latency_threshold,
+                auth_method = excluded.auth_method,
+                private_key_path = excluded.private_key_path;
             """;
         command.Parameters.AddWithValue("$id", server.Id.ToString("D"));
         command.Parameters.AddWithValue("$name", server.Name);
@@ -93,6 +98,8 @@ public sealed class SqliteVpsRepository : IVpsRepository
         command.Parameters.AddWithValue("$memory", (object?)server.ThresholdOverrides?.MemoryPercent ?? DBNull.Value);
         command.Parameters.AddWithValue("$disk", (object?)server.ThresholdOverrides?.DiskPercent ?? DBNull.Value);
         command.Parameters.AddWithValue("$latency", (object?)server.ThresholdOverrides?.LatencyMilliseconds ?? DBNull.Value);
+        command.Parameters.AddWithValue("$authMethod", (int)server.AuthMethod);
+        command.Parameters.AddWithValue("$keyPath", (object?)server.PrivateKeyPath ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -131,12 +138,32 @@ public sealed class SqliteVpsRepository : IVpsRepository
                 );
                 """;
             await command.ExecuteNonQueryAsync(cancellationToken);
+            await AddColumnIfMissingAsync(connection, "auth_method", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+            await AddColumnIfMissingAsync(connection, "private_key_path", "TEXT NULL", cancellationToken);
             _initialized = true;
         }
         finally
         {
             _initializationLock.Release();
         }
+    }
+
+    private static async Task AddColumnIfMissingAsync(
+        SqliteConnection connection,
+        string column,
+        string definition,
+        CancellationToken cancellationToken)
+    {
+        await using (var info = connection.CreateCommand())
+        {
+            info.CommandText = "SELECT 1 FROM pragma_table_info('vps_servers') WHERE name = $name;";
+            info.Parameters.AddWithValue("$name", column);
+            if (await info.ExecuteScalarAsync(cancellationToken) is not null) return;
+        }
+
+        await using var alter = connection.CreateCommand();
+        alter.CommandText = $"ALTER TABLE vps_servers ADD COLUMN {column} {definition};";
+        await alter.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
@@ -165,7 +192,9 @@ public sealed class SqliteVpsRepository : IVpsRepository
             reader.GetString(4),
             reader.GetInt32(5) == 1,
             reader.IsDBNull(6) ? null : reader.GetString(6),
-            thresholds);
+            thresholds,
+            reader.GetInt32(11) == (int)SshAuthMethod.PrivateKey ? SshAuthMethod.PrivateKey : SshAuthMethod.Password,
+            reader.IsDBNull(12) ? null : reader.GetString(12));
     }
 
     private static double ReadDouble(SqliteDataReader reader, int ordinal, double fallback) =>

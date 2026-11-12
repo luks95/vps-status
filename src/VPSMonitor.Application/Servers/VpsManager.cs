@@ -8,25 +8,52 @@ public sealed class VpsManager(IVpsRepository repository, ICredentialVault crede
     public Task<IReadOnlyList<VpsServer>> GetAllAsync(CancellationToken cancellationToken = default) =>
         repository.GetAllAsync(cancellationToken);
 
-    public async Task SaveAsync(VpsServer server, string? password, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Guarda la VPS y su secreto (contraseña, o passphrase de la clave privada).
+    /// <paramref name="secret"/> null conserva el secreto guardado; una cadena vacía con clave privada
+    /// elimina la passphrase guardada.
+    /// </summary>
+    public async Task SaveAsync(VpsServer server, string? secret, CancellationToken cancellationToken = default)
     {
         server.Validate();
         if (server.Id == Guid.Empty) throw new ArgumentException("La VPS debe tener un identificador.", nameof(server));
 
         var existing = await repository.GetAsync(server.Id, cancellationToken);
-        string? previousPassword = null;
+        var isKeyAuth = server.AuthMethod == SshAuthMethod.PrivateKey;
 
-        if (password is not null)
+        if (isKeyAuth)
+        {
+            // Un secreto guardado de otro método o de otra clave no sirve como passphrase.
+            var keyChanged = existing is null ||
+                existing.AuthMethod != SshAuthMethod.PrivateKey ||
+                !string.Equals(existing.PrivateKeyPath, server.PrivateKeyPath, StringComparison.OrdinalIgnoreCase);
+            if (secret is null && keyChanged) secret = string.Empty;
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(secret)) secret = null;
+            if (secret is null && (existing is null || existing.AuthMethod != SshAuthMethod.Password))
+            {
+                throw new ArgumentException("La contraseña es obligatoria.", nameof(secret));
+            }
+        }
+
+        string? previousSecret = null;
+        if (secret is not null)
         {
             if (existing is not null)
             {
-                previousPassword = await credentialVault.GetPasswordAsync(server.Id, cancellationToken);
+                previousSecret = await credentialVault.GetPasswordAsync(server.Id, cancellationToken);
             }
-            await credentialVault.StoreAsync(server.Id, server.Username, password, cancellationToken);
-        }
-        else if (existing is null)
-        {
-            throw new ArgumentException("La contraseña es obligatoria para una VPS nueva.", nameof(password));
+
+            if (secret.Length == 0)
+            {
+                await credentialVault.DeleteAsync(server.Id, cancellationToken);
+            }
+            else
+            {
+                await credentialVault.StoreAsync(server.Id, server.Username, secret, cancellationToken);
+            }
         }
 
         try
@@ -35,15 +62,15 @@ public sealed class VpsManager(IVpsRepository repository, ICredentialVault crede
         }
         catch
         {
-            if (password is not null)
+            if (secret is not null)
             {
-                if (previousPassword is null)
+                if (previousSecret is null)
                 {
                     await credentialVault.DeleteAsync(server.Id, CancellationToken.None);
                 }
                 else
                 {
-                    await credentialVault.StoreAsync(server.Id, existing!.Username, previousPassword, CancellationToken.None);
+                    await credentialVault.StoreAsync(server.Id, existing!.Username, previousSecret, CancellationToken.None);
                 }
             }
 

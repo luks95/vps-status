@@ -7,8 +7,9 @@ Aplicación de escritorio para Windows 11 que monitorea hasta cinco VPS Linux po
 - Monitoreo simultáneo en tiempo real con una muestra cada dos segundos.
 - Gráficas móviles de los últimos 60 segundos; no guarda historial de métricas.
 - Conexiones SSH persistentes y aisladas por VPS.
-- Autenticación por IP o dominio, usuario y contraseña.
-- Contraseñas almacenadas como credenciales genéricas locales en Credential Manager de Windows.
+- Autenticación por IP o dominio, usuario y contraseña **o clave SSH** (OpenSSH/PEM: ed25519, ECDSA, RSA).
+- Contraseñas y passphrases almacenadas como credenciales genéricas locales en Credential Manager de Windows.
+- Con clave SSH solo se guarda la ruta del archivo; la clave privada nunca se copia.
 - Verificación estricta de la huella SHA-256 de la clave de host SSH.
 - Latencia ICMP con alternativa TCP al puerto SSH.
 - Alertas globales y límites opcionales por VPS.
@@ -33,12 +34,12 @@ dotnet run --project src/VPSMonitor.App/VPSMonitor.App.csproj
 ## Primer uso
 
 1. Selecciona **Agregar VPS**.
-2. Ingresa nombre, IP o dominio, puerto SSH, usuario y contraseña.
+2. Ingresa nombre, IP o dominio, puerto SSH y usuario. Elige **Contraseña** o **Clave SSH** (con **Examinar** localizas p. ej. `~/.ssh/id_ed25519`; la passphrase es opcional). Los archivos `.ppk` de PuTTY no son compatibles: expórtalos a formato OpenSSH.
 3. Selecciona **Probar conexión**.
 4. Verifica por un canal confiable la huella SSH que muestra la aplicación.
 5. Aprueba la huella y guarda la VPS.
 
-La contraseña no se guarda en SQLite. La base local contiene solamente configuración y huellas confiables.
+La contraseña o passphrase no se guarda en SQLite. La base local contiene solamente configuración (incluida la ruta de la clave, si aplica) y huellas confiables. Para usar una clave, su parte pública debe estar en `~/.ssh/authorized_keys` del servidor.
 
 ## Datos locales
 

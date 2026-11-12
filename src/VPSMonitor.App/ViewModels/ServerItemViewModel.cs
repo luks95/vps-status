@@ -52,6 +52,30 @@ public sealed class ServerItemViewModel : ObservableObject
         _ => "Sin conexión"
     };
 
+    public string StatusIcon => _status switch
+    {
+        ConnectionStatus.Online => "\uE73E",
+        ConnectionStatus.Warning or ConnectionStatus.HostKeyUnknown => "\uE7BA",
+        ConnectionStatus.Connecting or ConnectionStatus.Reconnecting => "\uE895",
+        ConnectionStatus.Disabled => "\uE769",
+        _ => "\uEA39"
+    };
+
+    public bool HasIssue => _status is not (ConnectionStatus.Online or ConnectionStatus.Connecting or ConnectionStatus.Disabled);
+
+    public string StatusBackground => _status switch
+    {
+        ConnectionStatus.Online => "#1F42D17E",
+        ConnectionStatus.Warning or ConnectionStatus.Reconnecting or ConnectionStatus.HostKeyUnknown => "#26FFB020",
+        ConnectionStatus.Connecting => "#243B9CFF",
+        ConnectionStatus.Disabled => "#247E8B98",
+        _ => "#26FF5C6C"
+    };
+
+    public string AuthText => _server.AuthMethod == SshAuthMethod.PrivateKey ? "Clave SSH" : "Contraseña";
+    public string AuthIcon => _server.AuthMethod == SshAuthMethod.PrivateKey ? "\uE192" : "\uE72E";
+    public string UserEndpoint => $"{_server.Username}@{_server.Host}:{_server.Port}";
+
     public string StatusColor => _status switch
     {
         ConnectionStatus.Online => "#42D17E",
@@ -61,6 +85,8 @@ public sealed class ServerItemViewModel : ObservableObject
         _ => "#FF5C6C"
     };
 
+    public double CpuPercent => _metrics?.CpuPercent ?? 0;
+    public double MemoryPercent => _metrics?.MemoryPercent ?? 0;
     public string CpuText => _metrics is null ? "—" : $"{_metrics.CpuPercent:F0}%";
     public string MemoryText => _metrics is null ? "—" : $"{FormatBytes(_metrics.MemoryUsedBytes)} / {FormatBytes(_metrics.MemoryTotalBytes)}";
     public string MemoryPercentText => _metrics is null ? "—" : $"{_metrics.MemoryPercent:F0}%";
@@ -156,6 +182,9 @@ public sealed class ServerItemViewModel : ObservableObject
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(Endpoint));
         OnPropertyChanged(nameof(Username));
+        OnPropertyChanged(nameof(UserEndpoint));
+        OnPropertyChanged(nameof(AuthText));
+        OnPropertyChanged(nameof(AuthIcon));
     }
 
     public void Apply(ServerMonitorState state)
@@ -177,7 +206,8 @@ public sealed class ServerItemViewModel : ObservableObject
 
     private static readonly string[] MetricProperties =
     [
-        nameof(Status), nameof(StatusLabel), nameof(StatusColor), nameof(StatusMessage), nameof(Metrics),
+        nameof(Status), nameof(StatusLabel), nameof(StatusColor), nameof(StatusIcon), nameof(StatusBackground), nameof(HasIssue),
+        nameof(StatusMessage), nameof(Metrics), nameof(CpuPercent), nameof(MemoryPercent),
         nameof(CpuText), nameof(MemoryText), nameof(MemoryPercentText), nameof(DiskText), nameof(DiskPercentText),
         nameof(DiskPercent), nameof(LatencyText), nameof(LatencyMethodText), nameof(UptimeText), nameof(LoadText),
         nameof(LoadDetails), nameof(ProcessesText), nameof(TemperatureText), nameof(DistributionText),
