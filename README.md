@@ -62,6 +62,17 @@ dotnet build VPSMonitor.slnx --configuration Release
 dotnet test VPSMonitor.slnx --configuration Release --no-build
 ```
 
+## Instalar
+
+Descarga `VPSMonitor-Setup-<versión>.exe` desde la página de [Releases](https://github.com/luks95/vps-status/releases/latest) y ejecútalo. No requiere .NET ni permisos de administrador (se instala para tu usuario por defecto). Al desinstalar no se borran tus servidores ni credenciales.
+
+Para generar el instalador tú mismo (requiere Inno Setup 6: `winget install JRSoftware.InnoSetup`):
+
+```powershell
+./installer/build-installer.ps1 -Version 1.1.0
+# -> artifacts/installer/VPSMonitor-Setup-1.1.0.exe
+```
+
 ## Publicar para Windows x64
 
 ```powershell
