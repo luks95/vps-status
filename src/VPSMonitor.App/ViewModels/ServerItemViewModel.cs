@@ -158,6 +158,10 @@ public sealed class ServerItemViewModel : ObservableObject
         }
     ];
 
+    public SolidColorPaint LegendTextPaint { get; } = new(new SKColor(168, 180, 192));
+    public SolidColorPaint TooltipTextPaint { get; } = new(new SKColor(244, 247, 250));
+    public SolidColorPaint TooltipBackgroundPaint { get; } = new(new SKColor(25, 34, 44));
+
     public Axis[] TimeXAxes { get; } =
     [
         new Axis

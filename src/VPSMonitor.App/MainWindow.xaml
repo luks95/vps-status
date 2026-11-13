@@ -74,6 +74,7 @@
         <Style x:Key="MetricValue" TargetType="TextBlock">
             <Setter Property="FontSize" Value="24" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         </Style>
     </Window.Resources>
 
@@ -141,7 +142,7 @@
                             </StackPanel>
                         </Grid>
                     </Button>
-                    <Button Style="{StaticResource NavButton}"
+                    <Button Style="{StaticResource NavButton}" HorizontalContentAlignment="Stretch"
                             Background="{Binding CurrentPage, Converter={StaticResource PageSelectionBrushConverter}, ConverterParameter=Alertas}"
                             Command="{Binding NavigateCommand}"
                             CommandParameter="Alertas">
@@ -618,14 +619,14 @@
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="240" /></Grid.RowDefinitions>
                                             <Grid><TextBlock Text="CPU" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="{Binding CpuText}" HorizontalAlignment="Right" FontSize="24" Foreground="{StaticResource AccentBrush}" /></Grid>
-                                            <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding CpuSeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding PercentageYAxes}" LegendPosition="Hidden" AutomationProperties.Name="{Binding ChartSummary}" />
+                                            <lvc:CartesianChart Background="{StaticResource SurfaceBrush}" LegendTextPaint="{Binding LegendTextPaint}" TooltipTextPaint="{Binding TooltipTextPaint}" TooltipBackgroundPaint="{Binding TooltipBackgroundPaint}" Grid.Row="1" Margin="0,10,0,0" Series="{Binding CpuSeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding PercentageYAxes}" LegendPosition="Hidden" AutomationProperties.Name="{Binding ChartSummary}" />
                                         </Grid>
                                     </Border>
                                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0,0,0">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="240" /></Grid.RowDefinitions>
                                             <Grid><TextBlock Text="Memoria" FontSize="16" FontWeight="SemiBold" /><StackPanel HorizontalAlignment="Right"><TextBlock Text="{Binding MemoryText}" FontSize="16" Foreground="{StaticResource AccentBlueBrush}" HorizontalAlignment="Right" /><TextBlock Text="{Binding MemoryPercentText}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" /></StackPanel></Grid>
-                                            <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding MemorySeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding PercentageYAxes}" LegendPosition="Hidden" AutomationProperties.Name="Gráfica de memoria de los últimos 60 segundos" />
+                                            <lvc:CartesianChart Background="{StaticResource SurfaceBrush}" LegendTextPaint="{Binding LegendTextPaint}" TooltipTextPaint="{Binding TooltipTextPaint}" TooltipBackgroundPaint="{Binding TooltipBackgroundPaint}" Grid.Row="1" Margin="0,10,0,0" Series="{Binding MemorySeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding PercentageYAxes}" LegendPosition="Hidden" AutomationProperties.Name="Gráfica de memoria de los últimos 60 segundos" />
                                         </Grid>
                                     </Border>
                                 </Grid>
@@ -645,14 +646,14 @@
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="190" /></Grid.RowDefinitions>
                                             <Grid><TextBlock Text="Red" FontSize="16" FontWeight="SemiBold" /><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding NetworkReceiveText}" Foreground="{StaticResource AccentBlueBrush}" /><TextBlock Text="   " /><TextBlock Text="{Binding NetworkTransmitText}" Foreground="{StaticResource AccentBrush}" /></StackPanel></Grid>
-                                            <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding NetworkSeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding RateYAxes}" LegendPosition="Bottom" AutomationProperties.Name="Gráfica de red de los últimos 60 segundos" />
+                                            <lvc:CartesianChart Background="{StaticResource SurfaceBrush}" LegendTextPaint="{Binding LegendTextPaint}" TooltipTextPaint="{Binding TooltipTextPaint}" TooltipBackgroundPaint="{Binding TooltipBackgroundPaint}" Grid.Row="1" Margin="0,10,0,0" Series="{Binding NetworkSeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding RateYAxes}" LegendPosition="Bottom" AutomationProperties.Name="Gráfica de red de los últimos 60 segundos" />
                                         </Grid>
                                     </Border>
                                     <Border Grid.Column="2" Style="{StaticResource Card}" Margin="7,0,0,0">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="190" /></Grid.RowDefinitions>
                                             <Grid><TextBlock Text="Latencia" FontSize="16" FontWeight="SemiBold" /><StackPanel HorizontalAlignment="Right"><TextBlock Text="{Binding LatencyText}" FontSize="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Right" /><TextBlock Text="{Binding LatencyMethodText}" HorizontalAlignment="Right" Style="{StaticResource MutedText}" /></StackPanel></Grid>
-                                            <lvc:CartesianChart Grid.Row="1" Margin="0,10,0,0" Series="{Binding LatencySeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding LatencyYAxes}" LegendPosition="Hidden" AutomationProperties.Name="Gráfica de latencia de los últimos 60 segundos" />
+                                            <lvc:CartesianChart Background="{StaticResource SurfaceBrush}" LegendTextPaint="{Binding LegendTextPaint}" TooltipTextPaint="{Binding TooltipTextPaint}" TooltipBackgroundPaint="{Binding TooltipBackgroundPaint}" Grid.Row="1" Margin="0,10,0,0" Series="{Binding LatencySeries}" XAxes="{Binding TimeXAxes}" YAxes="{Binding LatencyYAxes}" LegendPosition="Hidden" AutomationProperties.Name="Gráfica de latencia de los últimos 60 segundos" />
                                         </Grid>
                                     </Border>
                                 </Grid>
