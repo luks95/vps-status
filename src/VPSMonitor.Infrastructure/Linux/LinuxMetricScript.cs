@@ -2,7 +2,10 @@ namespace VPSMonitor.Infrastructure.Linux;
 
 internal static class LinuxMetricScript
 {
-    public const string Value = """
+    // El archivo fuente puede compilarse con CRLF (core.autocrlf en Windows); el shell remoto necesita LF.
+    public static readonly string Value = Raw.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+    private const string Raw = """
         export LC_ALL=C
         printf '__CPU__\n'
         head -n 1 /proc/stat

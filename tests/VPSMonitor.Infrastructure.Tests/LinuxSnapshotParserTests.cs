@@ -63,4 +63,11 @@ public sealed class LinuxSnapshotParserTests
 
         Assert.Contains("MEM", error.Message);
     }
+
+    [Fact]
+    public void MetricScript_NeverContainsCarriageReturns()
+    {
+        // Un CR al final de cada linea rompe el shell remoto (p. ej. "head -n 1 /proc/stat" + CR).
+        Assert.DoesNotContain((char)13, VPSMonitor.Infrastructure.Linux.LinuxMetricScript.Value);
+    }
 }
